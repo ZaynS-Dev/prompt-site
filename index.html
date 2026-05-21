@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="VR Shoot Prompt Manager — AI Fashion Photography Prompt Library" />
+  <title>VR Shoot Prompts — AI Fashion Photography Prompt Library</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Lucide Icons -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <!-- Supabase JS v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/styles.css" />
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23FF6B1A'><path d='M9 2L7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3.17L15 2H9zm3 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/></svg>" />
+</head>
+<body>
+  <div class="app" id="app">
+
+    <!-- ═══════════════ SIDEBAR ═══════════════ -->
+    <aside class="sidebar" id="sidebar" aria-label="Navigation sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <div class="logo-icon"><i data-lucide="camera"></i></div>
+          <div class="logo-text">
+            <span class="logo-title">VR Shoot</span>
+            <span class="logo-sub">Prompts</span>
+          </div>
+        </div>
+        <button class="icon-btn sidebar-close" id="sidebarClose" aria-label="Close sidebar">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <button class="nav-item active" data-view="dashboard">
+            <i data-lucide="layout-dashboard"></i><span>Dashboard</span>
+          </button>
+          <button class="nav-item" data-view="all">
+            <i data-lucide="layers"></i><span>All Prompts</span>
+            <span class="badge" id="badgeAll">0</span>
+          </button>
+          <button class="nav-item" data-view="favorites">
+            <i data-lucide="star"></i><span>Favorites</span>
+            <span class="badge" id="badgeFav">0</span>
+          </button>
+          <button class="nav-item" data-view="history">
+            <i data-lucide="clock"></i><span>History</span>
+          </button>
+        </div>
+
+        <div class="nav-section">
+          <button class="nav-group-toggle" data-group="pose">
+            <i data-lucide="chevron-down" class="chev"></i>
+            <span>By Pose Type</span>
+          </button>
+          <div class="nav-group" id="poseList"></div>
+        </div>
+
+        <div class="nav-section">
+          <button class="nav-group-toggle" data-group="dress">
+            <i data-lucide="chevron-down" class="chev"></i>
+            <span>By Dress Type</span>
+          </button>
+          <div class="nav-group" id="dressList"></div>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">
+            <i data-lucide="tags"></i><span>Tags</span>
+          </div>
+          <div class="tag-cloud" id="tagCloud">
+            <span class="muted">No tags yet</span>
+          </div>
+        </div>
+
+        <div class="nav-section nav-bottom">
+          <button class="nav-item" id="btnExport">
+            <i data-lucide="download"></i><span>Export Data</span>
+          </button>
+          <button class="nav-item" id="btnImport">
+            <i data-lucide="upload"></i><span>Import Data</span>
+          </button>
+          <input type="file" id="importFile" accept="application/json" hidden />
+          <button class="nav-item" data-view="settings">
+            <i data-lucide="settings"></i><span>Settings</span>
+          </button>
+          <button class="nav-item" id="btnTheme">
+            <i data-lucide="moon"></i><span>Dark Mode</span>
+          </button>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- ═══════════════ MAIN ═══════════════ -->
+    <div class="main">
+
+      <!-- Topbar -->
+      <header class="topbar">
+        <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">
+          <i data-lucide="menu"></i>
+        </button>
+
+        <div class="search-wrap">
+          <i data-lucide="search" class="search-icon"></i>
+          <input type="text" id="searchInput" class="search-input" placeholder="Search prompts, titles, tags…" />
+          <kbd class="search-kbd">Ctrl+F</kbd>
+        </div>
+
+        <div class="topbar-actions">
+          <!-- Sync indicator -->
+          <div class="sync-indicator" id="syncIndicator" title="Cloud sync status">
+            <span class="sync-dot offline" id="syncDot"></span>
+            <span class="sync-label" id="syncLabel">Offline</span>
+            <span class="sync-pending hidden" id="syncPending"></span>
+          </div>
+
+          <!-- Sync popup -->
+          <div class="sync-popup hidden" id="syncPopup">
+            <div class="sync-popup-row">
+              <span id="popupLastSync" class="muted">Not synced yet</span>
+              <span id="popupPending" class="muted">All changes synced</span>
+            </div>
+            <button class="btn btn-primary btn-sm" id="btnSyncNow">
+              <i data-lucide="refresh-cw"></i> Sync Now
+            </button>
+          </div>
+
+          <button class="btn btn-primary" id="btnAddPrompt">
+            <i data-lucide="plus"></i><span>New Prompt</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Content area -->
+      <main class="content" id="content">
+
+        <!-- ─── Dashboard View ─── -->
+        <section class="view view-dashboard" id="viewDashboard">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">Dashboard</h1>
+              <p class="page-sub">Quick overview of your prompt library</p>
+            </div>
+          </div>
+          <div class="stats-grid" id="statsGrid"></div>
+          <div class="dashboard-row">
+            <div class="panel">
+              <div class="panel-header">
+                <h3><i data-lucide="clock"></i> Recent Prompts</h3>
+                <button class="link-btn" data-view-link="all">View all <i data-lucide="arrow-right"></i></button>
+              </div>
+              <div class="panel-body" id="recentList"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-header">
+                <h3><i data-lucide="star"></i> Favorites</h3>
+                <button class="link-btn" data-view-link="favorites">View all <i data-lucide="arrow-right"></i></button>
+              </div>
+              <div class="panel-body" id="favoritesList"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ─── Prompts View ─── -->
+        <section class="view view-prompts hidden" id="viewPrompts">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title" id="promptsTitle">All Prompts</h1>
+              <p class="page-sub"><span id="resultsCount">0</span> prompts found</p>
+            </div>
+            <div class="view-controls">
+              <div class="filter-bar">
+                <select id="filterPose" class="select"><option value="">All Poses</option></select>
+                <select id="filterDress" class="select"><option value="">All Dresses</option></select>
+                <select id="sortBy" class="select">
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="most-used">Most used</option>
+                  <option value="recent-used">Recently used</option>
+                </select>
+              </div>
+              <div class="view-toggle">
+                <button class="toggle-btn active" data-layout="grid" aria-label="Grid view"><i data-lucide="grid-3x3"></i></button>
+                <button class="toggle-btn" data-layout="list" aria-label="List view"><i data-lucide="list"></i></button>
+              </div>
+            </div>
+          </div>
+          <div class="active-filters" id="activeFilters"></div>
+          <div class="prompts-grid" id="promptsGrid"></div>
+          <div class="empty-state hidden" id="emptyState">
+            <div class="empty-illustration"><i data-lucide="image-off"></i></div>
+            <h2>No prompts yet</h2>
+            <p>Start building your AI fashion photography library by adding your first prompt.</p>
+            <button class="btn btn-primary" id="emptyAddBtn"><i data-lucide="plus"></i> Add your first prompt</button>
+          </div>
+        </section>
+
+        <!-- ─── History View ─── -->
+        <section class="view view-history hidden" id="viewHistory">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">Activity History</h1>
+              <p class="page-sub">Every action logged — restore deleted prompts anytime</p>
+            </div>
+          </div>
+
+          <!-- History filters -->
+          <div class="history-toolbar">
+            <input type="text" id="historySearch" class="input" placeholder="Search by prompt title…" style="max-width:240px" />
+            <select id="historyActionFilter" class="select">
+              <option value="">All Actions</option>
+              <option value="created">Created</option>
+              <option value="updated">Updated</option>
+              <option value="deleted">Deleted</option>
+              <option value="used">Copied</option>
+              <option value="favorited">Favorited</option>
+              <option value="unfavorited">Unfavorited</option>
+              <option value="restored">Restored</option>
+            </select>
+          </div>
+
+          <!-- Timeline -->
+          <div class="history-timeline" id="historyTimeline">
+            <div class="history-loading hidden" id="historyLoading">
+              <div class="skeleton-list">
+                <div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div>
+              </div>
+            </div>
+            <div class="history-empty hidden" id="historyEmpty">
+              <div class="empty-illustration"><i data-lucide="clock"></i></div>
+              <h3>No history yet</h3>
+              <p>Actions you take will appear here.</p>
+            </div>
+            <div id="historyEntries"></div>
+          </div>
+          <div class="history-more hidden" id="historyMore">
+            <button class="btn btn-ghost" id="btnLoadMore"><i data-lucide="chevron-down"></i> Load more</button>
+          </div>
+        </section>
+
+        <!-- ─── Settings View ─── -->
+        <section class="view view-settings hidden" id="viewSettings">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">Settings</h1>
+              <p class="page-sub">Cloud sync, backups, and more</p>
+            </div>
+          </div>
+
+          <!-- Cloud Sync section -->
+          <div class="settings-section" id="settingsCloud">
+            <div class="settings-section-header">
+              <h2><i data-lucide="cloud"></i> Cloud Sync</h2>
+              <span class="connection-badge" id="connectionBadge">Checking…</span>
+            </div>
+            <div class="settings-grid">
+              <div class="settings-card">
+                <div class="settings-label">Supabase Project</div>
+                <div class="settings-value muted">https://ystq…supabase.co</div>
+              </div>
+              <div class="settings-card" id="syncedCountCard">
+                <div class="settings-label">Prompts Synced</div>
+                <div class="settings-value" id="syncedCount">—</div>
+              </div>
+              <div class="settings-card">
+                <div class="settings-label">Last Sync</div>
+                <div class="settings-value" id="settingsLastSync">—</div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <label class="toggle-label">
+                <span>Enable Cloud Sync</span>
+                <div class="toggle-switch">
+                  <input type="checkbox" id="toggleCloudSync" checked />
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                </div>
+              </label>
+            </div>
+            <div class="settings-row">
+              <label class="settings-label" for="syncFreqSelect">Sync Frequency</label>
+              <select id="syncFreqSelect" class="select" style="width:auto">
+                <option value="1">Every 1 minute</option>
+                <option value="5" selected>Every 5 minutes</option>
+                <option value="15">Every 15 minutes</option>
+                <option value="30">Every 30 minutes</option>
+              </select>
+            </div>
+            <div class="settings-actions">
+              <button class="btn btn-primary" id="btnTestConnection">
+                <i data-lucide="wifi"></i> Test Connection
+              </button>
+              <button class="btn btn-ghost" id="btnSyncNowSettings">
+                <i data-lucide="refresh-cw"></i> Sync Now
+              </button>
+            </div>
+          </div>
+
+          <!-- Backup & Restore section -->
+          <div class="settings-section" id="settingsBackup">
+            <div class="settings-section-header">
+              <h2><i data-lucide="database-backup"></i> Backup & Restore</h2>
+            </div>
+            <div class="settings-grid">
+              <div class="settings-card">
+                <div class="settings-label">Last Backup</div>
+                <div class="settings-value" id="lastBackupTime">—</div>
+              </div>
+              <div class="settings-card" id="backupCountCard">
+                <div class="settings-label">Total Backups</div>
+                <div class="settings-value" id="backupCount">—</div>
+              </div>
+              <div class="settings-card">
+                <div class="settings-label">Storage Used</div>
+                <div class="settings-value" id="backupStorageKb">—</div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <label class="toggle-label">
+                <span>Auto Backup</span>
+                <div class="toggle-switch">
+                  <input type="checkbox" id="toggleAutoBackup" checked />
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                </div>
+              </label>
+            </div>
+            <div class="settings-row">
+              <label class="settings-label" for="backupFreqSelect">Backup Frequency</label>
+              <select id="backupFreqSelect" class="select" style="width:auto">
+                <option value="15">Every 15 minutes</option>
+                <option value="30" selected>Every 30 minutes</option>
+                <option value="60">Every 1 hour</option>
+              </select>
+            </div>
+            <div class="settings-actions">
+              <button class="btn btn-primary" id="btnBackupNow">
+                <i data-lucide="shield-check"></i> Backup Now
+              </button>
+              <button class="btn btn-ghost" id="btnExportJSON">
+                <i data-lucide="download"></i> Export JSON
+              </button>
+              <button class="btn btn-ghost" id="btnImportJSON">
+                <i data-lucide="upload"></i> Import JSON
+              </button>
+              <input type="file" id="importFileSettings" accept="application/json" hidden />
+            </div>
+
+            <!-- Backup list -->
+            <div class="backup-list-wrap">
+              <h3 class="backup-list-title">Backup History</h3>
+              <div id="backupList" class="backup-list">
+                <div class="muted" style="padding:16px">Loading backups…</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- History section -->
+          <div class="settings-section" id="settingsHistory">
+            <div class="settings-section-header">
+              <h2><i data-lucide="scroll-text"></i> Activity History</h2>
+            </div>
+            <div class="settings-grid">
+              <div class="settings-card">
+                <div class="settings-label">Total Actions Logged</div>
+                <div class="settings-value" id="historyTotalCount">—</div>
+              </div>
+            </div>
+            <div class="settings-row" style="align-items:center;gap:12px;display:flex;flex-wrap:wrap">
+              <label class="settings-label" style="margin:0">Clear history older than</label>
+              <select id="clearHistoryDays" class="select" style="width:auto">
+                <option value="30">30 days</option>
+                <option value="60">60 days</option>
+                <option value="90">90 days</option>
+              </select>
+              <button class="btn btn-ghost" id="btnClearHistory">Clear</button>
+            </div>
+            <div class="settings-actions">
+              <button class="btn btn-ghost" id="btnExportHistoryCSV">
+                <i data-lucide="file-text"></i> Export History CSV
+              </button>
+            </div>
+          </div>
+
+          <!-- Danger Zone -->
+          <div class="settings-section danger-zone">
+            <div class="settings-section-header">
+              <h2><i data-lucide="triangle-alert"></i> Danger Zone</h2>
+            </div>
+            <div class="danger-actions">
+              <div class="danger-item">
+                <div>
+                  <div class="danger-title">Clear Local Data</div>
+                  <div class="muted">Removes all local data. Cloud data is preserved.</div>
+                </div>
+                <button class="btn btn-ghost danger-btn" id="btnClearLocal">Clear Local</button>
+              </div>
+              <div class="danger-item">
+                <div>
+                  <div class="danger-title">Delete All Cloud Data</div>
+                  <div class="muted">Permanently deletes all data from Supabase. Cannot be undone.</div>
+                </div>
+                <button class="btn btn-danger" id="btnDeleteCloud">Delete Cloud Data</button>
+              </div>
+              <div class="danger-item">
+                <div>
+                  <div class="danger-title">Reset Everything</div>
+                  <div class="muted">Clears all local AND cloud data, resets the app completely.</div>
+                </div>
+                <button class="btn btn-danger" id="btnResetAll">Reset App</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ════════ MODAL: Add / Edit Prompt ════════ -->
+  <div class="modal hidden" id="promptModal" role="dialog" aria-modal="true" aria-labelledby="promptModalTitle">
+    <div class="modal-backdrop" data-close="promptModal"></div>
+    <div class="modal-panel modal-lg">
+      <div class="modal-header">
+        <h2 id="promptModalTitle">Add New Prompt</h2>
+        <button class="icon-btn" data-close="promptModal" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <form class="modal-body" id="promptForm" autocomplete="off">
+        <input type="hidden" id="promptId" />
+        <div class="form-group">
+          <label class="form-label">Reference Images</label>
+          <div class="image-uploader" id="imageUploader">
+            <input type="file" id="imageInput" accept="image/png,image/jpeg,image/webp" multiple hidden />
+            <div class="uploader-empty" id="uploaderEmpty">
+              <i data-lucide="image-plus"></i>
+              <p><strong>Drag &amp; drop images here</strong> or click to browse</p>
+              <span class="muted">JPG, PNG, WebP — auto compressed &amp; uploaded to cloud</span>
+            </div>
+            <div class="uploader-grid" id="uploaderGrid"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="fieldTitle">Title <span class="req">*</span></label>
+            <input type="text" id="fieldTitle" class="input" placeholder="e.g. Studio Front Pose – Banarsi Saree" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="fieldPrompt">
+            Prompt Text <span class="req">*</span>
+            <span class="char-count"><span id="promptCharCount">0</span> chars</span>
+          </label>
+          <textarea id="fieldPrompt" class="textarea" rows="5" placeholder="Full AI prompt…" required></textarea>
+        </div>
+        <details class="form-collapse">
+          <summary><i data-lucide="chevron-right"></i> Negative Prompt (optional)</summary>
+          <div class="form-group">
+            <textarea id="fieldNegative" class="textarea" rows="3" placeholder="Things to avoid…"></textarea>
+          </div>
+        </details>
+        <div class="form-row two">
+          <div class="form-group">
+            <label class="form-label" for="fieldPose">Pose Category</label>
+            <div class="select-add">
+              <select id="fieldPose" class="select"></select>
+              <button type="button" class="icon-btn" id="addPoseBtn" title="Add new pose"><i data-lucide="plus"></i></button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="fieldDress">Dress Category</label>
+            <div class="select-add">
+              <select id="fieldDress" class="select"></select>
+              <button type="button" class="icon-btn" id="addDressBtn" title="Add new dress"><i data-lucide="plus"></i></button>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="fieldTagInput">Tags</label>
+          <div class="tag-input-wrap">
+            <div class="tag-list" id="tagList"></div>
+            <input type="text" id="fieldTagInput" class="tag-input" placeholder="Type a tag and press Enter…" />
+          </div>
+          <div class="tag-suggestions" id="tagSuggestions"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="fieldNotes">Notes (optional)</label>
+          <textarea id="fieldNotes" class="textarea" rows="2" placeholder="Personal notes…"></textarea>
+        </div>
+        <div class="form-group form-check">
+          <label class="checkbox">
+            <input type="checkbox" id="fieldFavorite" />
+            <span><i data-lucide="star"></i> Mark as favorite</span>
+          </label>
+        </div>
+      </form>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" data-close="promptModal">Cancel</button>
+        <button class="btn btn-primary" id="savePromptBtn"><i data-lucide="save"></i> Save Prompt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ MODAL: Detail View ════════ -->
+  <div class="modal hidden" id="detailModal" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="detailModal"></div>
+    <div class="modal-panel modal-lg">
+      <div class="modal-header">
+        <h2 id="detailTitle">Prompt Details</h2>
+        <div class="modal-header-actions">
+          <button class="icon-btn" id="detailFavBtn" aria-label="Toggle favorite"><i data-lucide="star"></i></button>
+          <button class="icon-btn" id="detailEditBtn" aria-label="Edit"><i data-lucide="pencil"></i></button>
+          <button class="icon-btn icon-btn-danger" id="detailDeleteBtn" aria-label="Delete"><i data-lucide="trash-2"></i></button>
+          <button class="icon-btn" data-close="detailModal" aria-label="Close"><i data-lucide="x"></i></button>
+        </div>
+      </div>
+      <div class="modal-body" id="detailBody"></div>
+    </div>
+  </div>
+
+  <!-- ════════ MODAL: Confirm ════════ -->
+  <div class="modal hidden" id="confirmModal" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="confirmModal"></div>
+    <div class="modal-panel modal-sm">
+      <div class="modal-header"><h2 id="confirmTitle">Are you sure?</h2></div>
+      <div class="modal-body"><p id="confirmMessage" class="muted">This action cannot be undone.</p></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" data-close="confirmModal">Cancel</button>
+        <button class="btn btn-danger" id="confirmOkBtn">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ MODAL: Input (add category) ════════ -->
+  <div class="modal hidden" id="inputModal" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="inputModal"></div>
+    <div class="modal-panel modal-sm">
+      <div class="modal-header">
+        <h2 id="inputTitle">Add Category</h2>
+        <button class="icon-btn" data-close="inputModal" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="inputField" id="inputLabel">Name</label>
+          <input type="text" id="inputField" class="input" placeholder="Type here…" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" data-close="inputModal">Cancel</button>
+        <button class="btn btn-primary" id="inputOkBtn">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ Lightbox ════════ -->
+  <div class="lightbox hidden" id="lightbox" role="dialog" aria-modal="true">
+    <button class="lightbox-close" data-close="lightbox" aria-label="Close"><i data-lucide="x"></i></button>
+    <button class="lightbox-nav prev" id="lbPrev" aria-label="Previous"><i data-lucide="chevron-left"></i></button>
+    <img id="lightboxImg" alt="Reference" />
+    <button class="lightbox-nav next" id="lbNext" aria-label="Next"><i data-lucide="chevron-right"></i></button>
+    <div class="lightbox-counter" id="lbCounter"></div>
+  </div>
+
+  <!-- ════════ Toasts ════════ -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- ═══ Scripts (order matters!) ═══ -->
+  <script src="js/config.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/image-uploader.js"></script>
+  <script src="js/history-manager.js"></script>
+  <script src="js/backup-manager.js"></script>
+  <script src="js/sync-manager.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.lucide) lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
